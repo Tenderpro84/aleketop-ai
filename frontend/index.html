@@ -1,65 +1,89 @@
-<!doctype html><!-- touch redeploy --><html lang="ru">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TenderAI — Поиск тендеров</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header {
+      background-color: #2ecc71;
+      color: white;
+      padding: 20px;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    main {
+      padding: 40px 20px;
+    }
+    h2 {
+      margin-bottom: 25px;
+      color: #333;
+    }
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+    button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #27ae60;
+    }
+    footer {
+      margin-top: 50px;
+      font-size: 14px;
+      color: #777;
+    }
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="container">
-      <h1>TenderAI</h1>
-      <a class="link" href="https://tenderai-backend.onrender.com/api/ping" target="_blank">API status</a>
-    </div>
+  <header>
+    TenderAI — Казахстанские тендеры
   </header>
 
-  <main class="container">
-    <section class="controls">
-      <input id="q" class="input" placeholder="Ключевые слова (ремонт, печать, транспорт...)" />
-      <select id="source" class="select">
-        <option value="">Все источники</option>
-        <option value="goszakup">goszakup</option>
-        <option value="zakup_sk">zakup.sk</option>
-      </select>
+  <main>
+    <h2>Выберите категорию поиска:</h2>
+    <div class="btn-group">
+      <button onclick="getTenders('Товары')">Товары</button>
+      <button onclick="getTenders('Работы')">Работы</button>
+      <button onclick="getTenders('Услуги')">Услуги</button>
+    </div>
 
-      <div class="tabs" id="tabs">
-        <button data-cat="" class="tab active">Все</button>
-        <button data-cat="goods" class="tab">Товары</button>
-        <button data-cat="works" class="tab">Работы</button>
-        <button data-cat="services" class="tab">Услуги</button>
-      </div>
-
-      <button id="searchBtn" class="btn">Искать</button>
-      <a class="btn ghost" href="https://tenderai-backend.onrender.com/api/export" target="_blank">Экспорт Excel</a>
-    </section>
-
-    <section class="stats" id="stats"></section>
-
-    <section class="table-wrap">
-      <table class="table" id="tbl">
-        <thead>
-          <tr>
-            <th>Категория</th>
-            <th>Название</th>
-            <th>Заказчик</th>
-            <th>Дата</th>
-            <th>Дедлайн</th>
-            <th>Сумма</th>
-            <th>Источник</th>
-            <th>Ссылка</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="8" class="muted">Загрузка...</td></tr>
-        </tbody>
-      </table>
-    </section>
+    <div id="result" style="margin-top:40px;"></div>
   </main>
 
-  <footer class="footer">
-    <div class="container">© 2025 TenderAI</div>
+  <footer>
+    <p>© 2025 TenderAI.kz</p>
   </footer>
 
-  <script src="./script.js"></script>
+  <script>
+    async function getTenders(type) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `<p>🔍 Идет поиск тендеров категории: <b>${type}</b>...</p>`;
+
+      try {
+        const res = await fetch(`https://tenderai-backend.onrender.com/api/search?category=${type}`);
+        const data = await res.json();
+        resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (err) {
+        resultDiv.innerHTML = `<p style="color:red;">Ошибка загрузки данных 😢</p>`;
+      }
+    }
+  </script>
 </body>
 </html>
