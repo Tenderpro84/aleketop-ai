@@ -2,16 +2,74 @@ name: daily-parse
 
 on:
   schedule:
-    # Запуск каждый день в 09:00 по Астане (UTC+5 = 04:00 UTC)
-    - cron: "0 4 * * *"
-  workflow_dispatch: {}  # ручной запуск из вкладки Actions
+    - cron: '0 4 * * *'   # ежедневно в 09:00 по Астане (UTC+5 → 04:00 UTC)
+  workflow_dispatch: {}
 
 jobs:
-  call-backend:
+  call_backend_and_export:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Call backend parse endpoint
+      - name: Checkout (чтобы был рабочий каталог)
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
         run: |
-          set -e
-          echo "Запуск парсера..."
-          curl -fsS https://tenderai-backend.onrender.com/api/parse
+          python -m pip install --upgrade pip
+          pip install requests pandas openpyxl \
+                     google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+
+      - name: Call /api/parse and save to Excel
+        id: save
+        env:
+          PARSE_URL: https://tenderai-backend.onrender.com/api/parse
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}   # опц.
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}                         # опц.
+        run: |
+          python - <<'PY'
+          import os, json, datetime, requests, pandas as pd
+          from pathlib import Path
+
+          url = os.getenv("PARSE_URL")
+          data = requests.get(url, timeout=60).json()
+
+          # Простейшая таблица: одна колонка categories
+          rows = [{"category": c} for c in data.get("categories", [])]
+          df = pd.DataFrame(rows)
+
+          ts = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H-%M")
+          out = f"tenders_{ts}.xlsx"
+          df.to_excel(out, index=False)
+          print(out)                         # напечатаем имя файла для следующего шага
+
+          # Если заданы секреты — грузим на Google Drive
+          sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+          folder_id = os.getenv("GDRIVE_FOLDER_ID")
+          if sa_json and folder_id:
+              from google.oauth2 import service_account
+              from googleapiclient.discovery import build
+              from googleapiclient.http import MediaFileUpload
+
+              creds = service_account.Credentials.from_service_account_info(
+                  json.loads(sa_json),
+                  scopes=["https://www.googleapis.com/auth/drive.file"]
+              )
+              service = build("drive", "v3", credentials=creds)
+              file_metadata = {"name": out, "parents": [folder_id]}
+              media = MediaFileUpload(out, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+              service.files.create(body=file_metadata, media_body=media, fields="id").execute()
+              print("Uploaded to Google Drive")
+          PY
+          echo "file=$(ls -1t tenders_*.xlsx | head -n1)" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact (Excel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenderai-excel
+          path: ${{ steps.save.outputs.file }}
+          if-no-files-found: error
