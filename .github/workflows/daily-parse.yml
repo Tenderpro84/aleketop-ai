@@ -1,0 +1,17 @@
+name: daily-parse
+
+on:
+  schedule:
+    # Запуск каждый день в 09:00 по Астане (UTC+5 = 04:00 UTC)
+    - cron: "0 4 * * *"
+  workflow_dispatch: {}  # ручной запуск из вкладки Actions
+
+jobs:
+  call-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call backend parse endpoint
+        run: |
+          set -e
+          echo "Запуск парсера..."
+          curl -fsS https://tenderai-backend.onrender.com/api/parse
