@@ -1,5 +1,5 @@
-import os
 from fastapi import FastAPI
+import os
 
 app = FastAPI()
 
@@ -9,7 +9,8 @@ def ping():
 
 @app.get("/api/parse")
 def parse():
-    categories = [c.strip() for c in os.getenv("PARSE_CATEGORIES", "").split(",") if c.strip()]
+    raw = os.getenv("PARSE_CATEGORIES", "")
+    categories = [c.strip() for c in raw.split(",") if c.strip()]
     return {
         "ok": True,
         "message": "Парсер готов к запуску 🚀",
